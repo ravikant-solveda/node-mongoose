@@ -90,6 +90,7 @@ exports.postCartDeleteProduct = (req, res, next) => {
 };
 
 exports.postOrder = (req, res, next) => {
+
   req.user
   .populate('cart.items.productId') // this is to get all the data of cart array 
   .execPopulate()
@@ -97,33 +98,32 @@ exports.postOrder = (req, res, next) => {
     const products = user.cart.items.map((i)=>{
       return {
         quantity: i.quantity,
-        product: i.productId
+        product: i.productId._doc
       }
     });
     const order = new Order({
       user: {
-        name: req.user.name,
+        name: req.user.name,   // req.user is a full object name where name is a title.
         userId: req.user   // similarily as we have done before, mongoose will automatically pickup "_id" from "req.user" document and assigned to "userId" because "userId" have type of "Schema.Types.ObjectId". So in this way, it will know what type of values should be assinged to the "userId".
       },
       products: products
     })
     return order.save();
   })
-    .then(result => {
-      res.redirect('/orders');
-    })
-    .catch(err => console.log(err));
+  .then(result => {
+    return req.user.clearCart();
+  }).then(()=>{
+    res.redirect('/orders');
+  })
+  .catch(err => console.log(err));
 };
 
 exports.getOrders = (req, res, next) => {
-  req.user
-    .getOrders()
-    .then(orders => {
-      res.render('shop/orders', {
-        path: '/orders',
-        pageTitle: 'Your Orders',
-        orders: orders
-      });
-    })
-    .catch(err => console.log(err));
+  Order.find({"user.userId": req.user._id}).then((orders)=>{
+    res.render('shop/orders', {
+      path: '/orders',
+      pageTitle: 'Your Orders',
+      orders: orders
+    });
+  })     
 };
